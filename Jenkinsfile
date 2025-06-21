@@ -84,6 +84,27 @@ pipeline {
                             echo "🔗 Creating symbolic link..."
                             ln -sf ${TARGET_PATH}/current /var/www/html/daily-quotes-backend
 
+                            # Configure Apache virtual host for clean URLs
+                            echo "🌐 Configuring Apache virtual host..."
+                            cat > /etc/apache2/sites-available/daily-quotes-backend.conf << 'EOF'
+<VirtualHost *:80>
+    ServerName 43.230.203.228
+    DocumentRoot /var/www/html/daily-quotes-backend/public
+
+    <Directory /var/www/html/daily-quotes-backend/public>
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/daily-quotes-backend_error.log
+    CustomLog ${APACHE_LOG_DIR}/daily-quotes-backend_access.log combined
+</VirtualHost>
+EOF
+
+                            # Enable the site
+                            a2ensite daily-quotes-backend
+                            a2dissite 000-default
+
                             # Restart Apache
                             echo "🔄 Restarting Apache..."
                             systemctl reload apache2
@@ -102,7 +123,7 @@ pipeline {
                     sleep 15
 
                     // Check if application is responding
-                    sh "curl -f http://${TARGET_SERVER}/daily-quotes-backend/public/ || echo 'Health check failed but deployment may still be successful'"
+                    sh "curl -f http://${TARGET_SERVER}/ || echo 'Health check failed but deployment may still be successful'"
 
                     echo "✅ Health check completed"
                 }
@@ -118,8 +139,9 @@ pipeline {
         }
         success {
             echo "🎉 Deployment completed successfully!"
-            echo "🌐 Application URL: http://${TARGET_SERVER}/daily-quotes-backend/public/"
-            echo "🔧 Admin Panel: http://${TARGET_SERVER}/daily-quotes-backend/public/admin"
+            echo "🌐 Application URL: http://${TARGET_SERVER}/"
+            echo "🔧 Admin Panel: http://${TARGET_SERVER}/admin"
+            echo "📊 API Base URL: http://${TARGET_SERVER}/api"
         }
         failure {
             echo "❌ Deployment failed!"
